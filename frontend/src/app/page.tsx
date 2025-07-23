@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../utils/axios';
+// ▼▼▼ axios와 AxiosError 타입을 가져오는 import를 추가합니다. ▼▼▼
+import axios, { AxiosError } from 'axios';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,11 +20,36 @@ export default function Home() {
       if (data.success && data.auth_url) {
         window.location.href = data.auth_url;
       } else {
-        setMessage('❌ 구글 로그인 URL 생성에 실패했습니다.');
+        setMessage(`❌ 구글 로그인 URL 생성에 실패했습니다: ${data.message || '알 수 없는 오류'}`);
       }
     } catch (err) {
-      setMessage('❌ 구글 로그인 중 오류가 발생했습니다.');
-      console.error('Google login error:', err);
+      // ▼▼▼▼▼ 타입 에러를 해결한 최종 디버깅 코드입니다. ▼▼▼▼▼
+      setMessage('❌ 구글 로그인 중 네트워크 오류가 발생했습니다. 개발자 콘솔을 확인해주세요.');
+      console.error('--- DETAILED LOGIN ERROR ---');
+      
+      // err가 Axios 에러인지 확인하는 과정을 추가합니다.
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          // 서버가 응답했지만, 에러 상태 코드(4xx, 5xx)를 보낸 경우
+          console.error('Response Data:', err.response.data);
+          console.error('Response Status:', err.response.status);
+          console.error('Response Headers:', err.response.headers);
+        } else if (err.request) {
+          // 요청은 보냈지만, 서버로부터 응답을 받지 못한 경우 (CORS, 네트워크 단절 등)
+          console.error('No Response Received. This is often a CORS or Network issue.');
+          console.error('Request Object:', err.request);
+        } else {
+          // 요청을 설정하는 단계에서 문제가 발생한 경우
+          console.error('Error setting up request:', err.message);
+        }
+        console.error('Full Error Config:', err.config);
+      } else {
+        // Axios 에러가 아닌 다른 종류의 에러인 경우
+        console.error('An unexpected non-Axios error occurred:', err);
+      }
+      
+      console.error('--- END OF DETAILED ERROR ---');
+      // ▲▲▲▲▲ 여기까지가 타입 에러를 해결한 부분입니다. ▲▲▲▲▲
     } finally {
       setIsLoading(false);
     }
