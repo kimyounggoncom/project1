@@ -1,3 +1,5 @@
+# gateway/main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,36 +12,42 @@ load_dotenv()
 app = FastAPI()
 
 # --- 설정값 로드 ---
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+# 환경 변수에서 콤마(,)로 구분된 여러 URL을 하나의 문자열로 가져옵니다.
+# 변수 이름도 복수형인 FRONTEND_URLS로 변경하여 명확하게 합니다.
+FRONTEND_URLS_STR = os.getenv("FRONTEND_URLS", "http://localhost:3000")
+
+# 가져온 문자열을 콤마(,) 기준으로 잘라서 파이썬 리스트로 만듭니다.
+# 이렇게 하면 여러 개의 출처(origin)를 동적으로 관리할 수 있습니다.
+ALLOWED_ORIGINS = [url.strip() for url in FRONTEND_URLS_STR.split(',')]
+
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "your-secret-key")
 
-# ▼▼▼ 여기가 핵심적인 변경 부분입니다 ▼▼▼
 # 현재 환경이 프로덕션(배포) 환경인지 확인합니다.
-# Railway는 자동으로 'RAILWAY_ENVIRONMENT' 변수를 'production'으로 설정해줍니다.
 IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") == "production"
+
 
 # --- 미들웨어 설정 ---
 
-# CORS 설정 (기존과 동일)
+# CORS 설정: 위에서 만든 리스트(ALLOWED_ORIGINS)를 사용합니다.
+# 이제 여기에 포함된 모든 주소에서의 요청을 허용합니다.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 세션 미들웨어 추가 (환경에 따라 다르게 설정)
+# 세션 미들웨어 추가 (기존과 동일)
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET_KEY,
     session_cookie="session",
     max_age=86400,  # 24시간
-    # 프로덕션 환경에서는 samesite='none'과 https_only=True로 설정합니다.
-    # 이렇게 해야 다른 도메인(Vercel)과 쿠키를 주고받을 수 있습니다.
     same_site="none" if IS_PRODUCTION else "lax",
     https_only=IS_PRODUCTION,
 )
+
 
 # --- 라우터 및 엔드포인트 ---
 
