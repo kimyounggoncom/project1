@@ -1,68 +1,63 @@
+// frontend/src/app/ClientLayout.tsx
+
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import api from '../utils/axios';
+import { useAuthStore } from '../stores/authStore';  // '../' 로 경로 수정
+import api from '../utils/axios';          // '../' 로 경로 수정
+import axios from 'axios';
 
-interface ClientLayoutProps {
-  children: React.ReactNode;
+// --- 타입 정의 (기존과 동일) ---
+interface User {
+  email: string;
+  name: string;
+  picture: string;
+  google_id: string;
 }
 
-export default function ClientLayout({ children }: ClientLayoutProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+interface VerifyApiResponse {
+  success: boolean;
+  user: User;
+}
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const { setUser, clearUser } = useAuthStore();
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const verifyUser = async () => {
+      console.log("Checking authentication...");
       try {
-        console.log('🔍 Checking authentication...');
+        const response = await api.get<VerifyApiResponse>('/auth/verify');
         
-        // 공개 페이지는 인증 체크 건너뛰기
-        if (pathname === '/login' || pathname === '/') {
-          console.log('✅ Skipping auth check for public page');
-          setIsLoading(false);
-          return;
+        if (response.data.success) {
+          setUser(response.data.user);
+        } else {
+          clearUser();
         }
-
-        console.log('📡 Calling /auth/verify endpoint...');
-        const response = await api.get('/auth/verify');
-        
-        console.log('✅ Auth check response:', response.status);
-        if (response.status === 200) {
-          console.log('🎉 Authentication successful!');
-          setIsAuthenticated(true);
-        }
-      } catch (error: any) {
-        console.error('❌ Authentication failed:', error);
-        setIsAuthenticated(false);
-        
-        // 보호된 페이지에서 인증 실패시 홈페이지로 리다이렉트
-        if (pathname !== '/' && pathname !== '/login') {
-          router.push('/');
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          console.log("Skipping auth check for public page (user not logged in).");
+          clearUser();
+        } else {
+          console.error("An unexpected error occurred during auth check:", err);
+          clearUser();
         }
       } finally {
-        setIsLoading(false);
+        setIsAuthChecked(true);
       }
     };
 
-    checkAuth();
-  }, [pathname]);
+    verifyUser();
+  }, [setUser, clearUser]);
 
-  if (isLoading) {
+  if (!isAuthChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div>Loading application...</div>
+        </div>
     );
   }
 
-  // 보호된 페이지에 대한 접근 제어
-  if (!isAuthenticated && pathname !== '/' && pathname !== '/login') {
-    router.push('/');
-    return null;
-  }
-
   return <>{children}</>;
-} 
+}
