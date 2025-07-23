@@ -117,6 +117,36 @@ async def verify_token(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+@auth_router.post("/logout")
+async def logout(request: Request):
+    """
+    로그아웃
+    
+    httpOnly 쿠키에서 토큰을 삭제합니다.
+    """
+    try:
+        response = {"message": "Logged out successfully"}
+        
+        # 쿠키 삭제를 위한 응답 생성
+        from fastapi.responses import JSONResponse
+        json_response = JSONResponse(content=response)
+        
+        # 현재 환경이 프로덕션인지 확인
+        IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") == "production"
+        
+        # session_token 쿠키 삭제
+        json_response.delete_cookie(
+            key="session_token",
+            path="/",
+            domain=None if IS_PRODUCTION else "localhost"  # 프로덕션에서는 도메인 자동 감지
+        )
+        
+        return json_response
+    except Exception as e:
+        logger.error(f"Logout failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+
 
 
 

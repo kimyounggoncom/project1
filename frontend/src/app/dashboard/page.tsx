@@ -44,10 +44,15 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      // 로그아웃 처리 (쿠키 삭제 등)
+      // Gateway의 로그아웃 엔드포인트 호출
+      await api.post('/auth/logout');
+      
+      // 로그아웃 성공 시 메인 페이지로 리디렉션
       router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
+      // 에러가 발생해도 메인 페이지로 이동
+      router.push('/');
     }
   };
 
