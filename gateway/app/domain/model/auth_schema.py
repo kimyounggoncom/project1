@@ -1,12 +1,12 @@
-from pydantic import BaseModel, HttpUrl, EmailStr
-from typing import Optional
-from datetime import datetime
+# gateway/app/domain/model/auth_schema.py
 
+from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 class OAuthLoginRequest(BaseModel):
     redirect_uri: Optional[HttpUrl] = None
     state: Optional[str] = None
-
 
 class OAuthCallbackRequest(BaseModel):
     code: str
@@ -14,24 +14,18 @@ class OAuthCallbackRequest(BaseModel):
     error: Optional[str] = None
     error_description: Optional[str] = None
 
-
 class LoginResponse(BaseModel):
-    success: bool
-    message: str
-    auth_url: Optional[str] = None
-    user: Optional[dict] = None
-    token: Optional[dict] = None
-
+    success: bool = Field(..., description="요청 성공 여부")
+    message: str = Field(..., description="응답 메시지")
+    auth_url: Optional[str] = Field(None, description="Google OAuth 인증 URL")
 
 class CallbackResponse(BaseModel):
     success: bool
     message: str
-    user: Optional[dict] = None
-    token: Optional[dict] = None
+    user: Optional[Dict[str, Any]] = None
+    token: Optional[Dict[str, Any]] = None
     redirect_url: Optional[str] = None
 
-
-# Pydantic 모델 (API 응답용)
 class UserResponse(BaseModel):
     id: Optional[int] = None
     email: str
@@ -44,14 +38,12 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class OAuthToken(BaseModel):
     access_token: str
     token_type: str = "Bearer"
     expires_in: Optional[int] = None
     refresh_token: Optional[str] = None
     scope: Optional[str] = None
-
 
 class GoogleUserInfo(BaseModel):
     id: str
@@ -62,7 +54,6 @@ class GoogleUserInfo(BaseModel):
     family_name: str
     picture: str
     locale: Optional[str] = None
-
 
 class AuthResponse(BaseModel):
     user: UserResponse
