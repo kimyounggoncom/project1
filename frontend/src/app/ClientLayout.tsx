@@ -1,12 +1,13 @@
+// frontend/src/app/ClientLayout.tsx
+
 'use client';
 
-import { useEffect } from 'react';
-// 정확한 상대 경로('../')로 수정했습니다.
-import { useAuthStore } from '../stores/authStore';
-import api from '../utils/axios';
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '../stores/authStore';  // '../' 로 경로 수정
+import api from '../utils/axios';          // '../' 로 경로 수정
 import axios from 'axios';
 
-// API 응답과 유저 데이터의 타입을 명확하게 정의합니다.
+// --- 타입 정의 (기존과 동일) ---
 interface User {
   email: string;
   name: string;
@@ -20,14 +21,15 @@ interface VerifyApiResponse {
 }
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  // Zustand의 올바른 사용법으로 스토어에서 값을 한번에 가져옵니다.
-  const { setUser, clearUser, setLoading } = useAuthStore();
-  
+  const { setUser, clearUser } = useAuthStore();
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
   useEffect(() => {
     const verifyUser = async () => {
-      setLoading(true);
+      console.log("Checking authentication...");
       try {
         const response = await api.get<VerifyApiResponse>('/auth/verify');
+        
         if (response.data.success) {
           setUser(response.data.user);
         } else {
@@ -35,17 +37,27 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         }
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 401) {
-          console.log("User not logged in.");
+          console.log("Skipping auth check for public page (user not logged in).");
           clearUser();
         } else {
           console.error("An unexpected error occurred during auth check:", err);
           clearUser();
         }
+      } finally {
+        setIsAuthChecked(true);
       }
     };
 
     verifyUser();
-  }, [setUser, clearUser, setLoading]);
+  }, [setUser, clearUser]);
+
+  if (!isAuthChecked) {
+    return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div>Loading application...</div>
+        </div>
+    );
+  }
 
   return <>{children}</>;
 }
